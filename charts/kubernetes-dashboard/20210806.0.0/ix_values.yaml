@@ -1,0 +1,10 @@
+kubernetes-dashboard:
+  image:
+    repository: kubernetesui/dashboard
+    tag: v2.3.1
+    pullPolicy: IfNotPresent
+
+image:
+  repository: kubernetesui/dashboard
+  tag: v2.3.1
+  pullPolicy: IfNotPresent
