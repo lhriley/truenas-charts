@@ -1,0 +1,227 @@
+groups:
+  - name: "Networking"
+    description: "Configure networking for container"
+  - name: "Port Forwarding"
+    description: "Configure ports to forward to workload"
+  - name: "Storage"
+    description: "Persist and share data that is separate from the lifecycle of the container"
+  - name: "Health Check"
+    description: "Define mechanism to periodically probe the container to ensure it's functioning as desired"
+  - name: "Scaling/Upgrade Policy"
+    description: "Configure how pods are replaced when configuration is upgraded"
+  - name: "Resource Reservation"
+    description: "Specify resources to be allocated to workload"
+
+questions:
+  # Networking options
+  - variable: externalInterfaces
+    description: "Add External Interfaces"
+    label: "Add external Interfaces"
+    group: "Networking"
+    schema:
+      type: list
+      items:
+        - variable: interfaceConfiguration
+          description: "Interface Configuration"
+          label: "Interface Configuration"
+          schema:
+            type: dict
+            $ref:
+              - "normalize/interfaceConfiguration"
+            attrs:
+              - variable: hostInterface
+                description: "Please specify host interface"
+                label: "Host Interface"
+                schema:
+                  type: string
+                  required: true
+                  $ref:
+                    - "definitions/interface"
+              - variable: ipam
+                description: "Define how IP Address will be managed"
+                label: "IP Address Management"
+                schema:
+                  type: dict
+                  required: true
+                  attrs:
+                    - variable: type
+                      description: "Specify type for IPAM"
+                      label: "IPAM Type"
+                      schema:
+                        type: string
+                        required: true
+                        enum:
+                          - value: "dhcp"
+                            description: "Use DHCP"
+                          - value: "static"
+                            description: "Use static IP"
+                        show_subquestions_if: "static"
+                        subquestions:
+                          - variable: staticIPConfigurations
+                            label: "Static IP Addresses"
+                            schema:
+                              type: list
+                              items:
+                                - variable: staticIP
+                                  label: "Static IP"
+                                  schema:
+                                    type: ipaddr
+                                    cidr: true
+                          - variable: staticRoutes
+                            label: "Static Routes"
+                            schema:
+                              type: list
+                              items:
+                                - variable: staticRouteConfiguration
+                                  label: "Static Route Configuration"
+                                  schema:
+                                    type: dict
+                                    attrs:
+                                      - variable: destination
+                                        label: "Destination"
+                                        schema:
+                                          type: ipaddr
+                                          cidr: true
+                                          required: true
+                                      - variable: gateway
+                                        label: "Gateway"
+                                        schema:
+                                          type: ipaddr
+                                          cidr: false
+                                          required: true
+
+  - variable: dnsPolicy
+    label: "DNS Policy"
+    description: "Default behaviour is where Pod inherits the name resolution configuration from the node that the pods run on, if None is specified, It allows a Pod to ignore DNS settings from the Kubernetes environment."
+    group: "Networking"
+    schema:
+      type: string
+      default: "Default"
+      enum:
+        - value: "Default"
+          description: "Use Default DNS Policy where Pod will inherit the name resolution configuration from the node."
+        - value: "ClusterFirst"
+          description: >
+            "Kubernetes internal DNS will be prioritised and resolved first. If the domain does not resolve with internal
+            kubernetes DNS, the DNS query will be forwarded to the upstream nameserver inherited from the node. This is
+            useful if the workload needs to access other service(s)/workload(s) using kubernetes internal DNS."
+        - value: "ClusterFirstWithHostNet"
+          description: "For Pods running with hostNetwork and wanting to prioritise internal kubernetes DNS should make use of this policy."
+        - value: "None"
+          description: "Ignore DNS settings from the Kubernetes cluster"
+
+  - variable: dnsConfig
+    label: "DNS Configuration"
+    group: "Networking"
+    description: "Specify custom DNS configuration which will be applied to the pod"
+    schema:
+      type: dict
+      attrs:
+        - variable: nameservers
+          label: "Nameservers"
+          schema:
+            default: []
+            type: list
+            items:
+              - variable: nameserver
+                label: "Nameserver"
+                schema:
+                  type: string
+        - variable: searches
+          label: "Searches"
+          schema:
+            default: []
+            type: list
+            items:
+              - variable: search
+                label: "Search Entry"
+                schema:
+                  type: string
+
+  - variable: hostNetwork
+    label: "Provide access to node network namespace for the workload"
+    group: "Networking"
+    schema:
+      type: boolean
+      default: false
+
+  - variable: hostPortsList
+    label: "Specify host ports for the workload"
+    description: "Only use host ports if scaling of a workload is not required"
+    group: "Networking"
+    schema:
+      show_if: [["updateStrategy", "=", "Recreate"]]
+      type: list
+      hidden: true
+      items:
+        - variable: hostPortConfiguration
+          label: "Host Port Configuration"
+          schema:
+            type: dict
+            attrs:
+              - variable: containerPort
+                label: "Container Port"
+                schema:
+                  type: string
+                  required: true
+              - variable: hostPort
+                label: "Host Port"
+                schema:
+                  type: string
+                  required: true
+
+  # Storage Options
+  # Host path based volumes
+  - variable: hostPathVolumes
+    label: "Host Path Volumes"
+    group: "Storage"
+    schema:
+      type: list
+      items:
+        - variable: hostPathConfiguration
+          label: "Host Path Configuration"
+          schema:
+            type: dict
+            attrs:
+              - variable: hostPath
+                label: "Host Path"
+                schema:
+                  type: hostpath
+                  required: true
+              - variable: mountPath
+                label: "Mount Path"
+                description: "Path where host path will be mounted inside the pod"
+                schema:
+                  type: path
+                  required: true
+              - variable: readOnly
+                label: "Read Only"
+                schema:
+                  type: boolean
+                  default: false
+
+  # Volumes
+  - variable: volumes
+    label: "Volumes"
+    group: "Storage"
+    schema:
+      type: list
+      items:
+        - variable: volume
+          label: "Volume"
+          schema:
+            type: dict
+            $ref:
+              - "normalize/ixVolume"
+            attrs:
+              - variable: mountPath
+                label: "Mount Path"
+                description: "Path where the volume will be mounted inside the pod"
+                schema:
+                  type: path
+                  required: true
+              - variable: datasetName
+                label: "Dataset Name"
+                schema:
+                  type: string
+                  required: true
